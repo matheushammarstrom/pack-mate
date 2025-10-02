@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Check } from 'lucide-react';
 import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,8 @@ import {
 } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import { trpc } from '@/utils/trpc';
+import { useDebounce } from '@/hooks/useDebounce';
+import { GeocodingResponse } from '@/types/geocoding';
 
 const tripFormSchema = z
   .object({
@@ -72,6 +74,11 @@ interface TripFormProps {
 
 export function TripForm({ onSuccess }: TripFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [destinationValidation, setDestinationValidation] = useState<{
+    isValid: boolean | null;
+    isLoading: boolean;
+    coordinates?: { latitude: number; longitude: number };
+  }>({ isValid: null, isLoading: false });
 
   const { data: tripTypes } = trpc.trip.getTripTypes.useQuery();
   const createTrip = trpc.trip.createTrip.useMutation();
@@ -86,11 +93,73 @@ export function TripForm({ onSuccess }: TripFormProps) {
     },
   });
 
+  const destinationValue = form.watch('destination');
+  const debouncedDestination = useDebounce(destinationValue, 1000);
+
+  useEffect(() => {
+    const validateDestination = async () => {
+      if (!debouncedDestination || debouncedDestination.length < 2) {
+        setDestinationValidation({ isValid: null, isLoading: false });
+        form.clearErrors('destination');
+        return;
+      }
+
+      setDestinationValidation({ isValid: null, isLoading: true });
+
+      try {
+        const response = await fetch(
+          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
+            debouncedDestination
+          )}&count=1`
+        );
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch geocoding data');
+        }
+
+        const data: GeocodingResponse = await response.json();
+        const isValid = data.results && data.results.length > 0;
+        const coordinates =
+          isValid && data.results[0]
+            ? {
+                latitude: data.results[0].latitude,
+                longitude: data.results[0].longitude,
+              }
+            : undefined;
+
+        setDestinationValidation({ isValid, isLoading: false, coordinates });
+
+        if (!isValid) {
+          form.setError('destination', {
+            type: 'manual',
+            message: 'Destination not found',
+          });
+        } else {
+          form.clearErrors('destination');
+        }
+      } catch (error) {
+        console.error('Geocoding validation error:', error);
+        setDestinationValidation({ isValid: false, isLoading: false });
+        form.setError('destination', {
+          type: 'manual',
+          message: 'Failed to validate destination',
+        });
+      }
+    };
+
+    validateDestination();
+  }, [debouncedDestination, form]);
+
   const onSubmit = async (values: TripFormValues) => {
     setIsSubmitting(true);
     try {
-      await createTrip.mutateAsync(values);
+      await createTrip.mutateAsync({
+        ...values,
+        latitude: destinationValidation.coordinates?.latitude,
+        longitude: destinationValidation.coordinates?.longitude,
+      });
       form.reset();
+      setDestinationValidation({ isValid: null, isLoading: false });
       onSuccess?.();
     } catch (error) {
       console.error('Failed to create trip:', error);
@@ -124,7 +193,16 @@ export function TripForm({ onSuccess }: TripFormProps) {
               <FormItem>
                 <FormLabel>Destination</FormLabel>
                 <FormControl>
-                  <Input placeholder="Paris, France" {...field} />
+                  <div className="relative">
+                    <Input placeholder="Paris, France" {...field} />
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      {destinationValidation.isLoading ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      ) : destinationValidation.isValid === true ? (
+                        <Check className="h-4 w-4 text-green-500" />
+                      ) : null}
+                    </div>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>

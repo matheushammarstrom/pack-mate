@@ -39,6 +39,8 @@ export const tripRouter = router({
           .transform((val) => new Date(val)),
         tripType: z.enum(TripType),
         description: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -57,6 +59,8 @@ export const tripRouter = router({
           tripType: input.tripType,
           description: input.description,
           userId: ctx.session.user.id,
+          latitude: input.latitude,
+          longitude: input.longitude,
         },
       });
 
