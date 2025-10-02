@@ -12,10 +12,16 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    session: async ({ session }) => {
+    session: async ({ session, token }) => {
+      if (token?.sub) {
+        session.user.id = token.sub;
+      }
       return session;
     },
-    jwt: async ({ token }) => {
+    jwt: async ({ token, user }) => {
+      if (user) {
+        token.sub = user.id;
+      }
       return token;
     },
   },

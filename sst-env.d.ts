@@ -33,11 +33,6 @@ declare module "sst" {
       "type": "sst.sst.Secret"
       "value": string
     }
-    "MigrationFunction": {
-      "name": string
-      "type": "sst.aws.Function"
-      "url": string
-    }
     "MyWeb": {
       "type": "sst.aws.Nextjs"
       "url": string
