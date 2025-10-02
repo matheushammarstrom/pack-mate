@@ -5,6 +5,9 @@ import { TripType, ItemCategory } from '@prisma/client';
 export const tripRouter = router({
   getAllTrips: protectedProcedure.query(async ({ ctx }) => {
     const trips = await ctx.db.trip.findMany({
+      omit: {
+        weatherData: true,
+      },
       where: {
         userId: ctx.session.user.id,
       },
@@ -28,8 +31,12 @@ export const tripRouter = router({
       z.object({
         title: z.string().min(1, 'Title is required'),
         destination: z.string().min(1, 'Destination is required'),
-        startDate: z.string().transform((val) => new Date(val)),
-        endDate: z.string().transform((val) => new Date(val)),
+        startDate: z
+          .union([z.string(), z.date()])
+          .transform((val) => new Date(val)),
+        endDate: z
+          .union([z.string(), z.date()])
+          .transform((val) => new Date(val)),
         tripType: z.enum(TripType),
         description: z.string().optional(),
       })

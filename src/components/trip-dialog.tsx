@@ -24,7 +24,7 @@ export function TripDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button size="sm" className="hidden md:flex">
+        <Button size="sm" className="bg-teal-500 hover:bg-teal-600 text-white">
           <Plus className="mr-2 h-4 w-4" />
           New Trip
         </Button>

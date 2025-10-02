@@ -9,7 +9,6 @@ import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
@@ -45,7 +44,19 @@ const tripFormSchema = z
     endDate: z.date({
       error: 'End date is required',
     }),
-    tripType: z.string().min(1, 'Trip type is required'),
+    tripType: z.enum([
+      'BUSINESS',
+      'LEISURE',
+      'ADVENTURE',
+      'BEACH',
+      'CITY_BREAK',
+      'CAMPING',
+      'CRUISE',
+      'BACKPACKING',
+      'FAMILY',
+      'ROMANTIC',
+      'OTHER',
+    ]),
     description: z.string().optional(),
   })
   .refine((data) => data.endDate > data.startDate, {
@@ -70,7 +81,7 @@ export function TripForm({ onSuccess }: TripFormProps) {
     defaultValues: {
       title: '',
       destination: '',
-      tripType: '',
+      tripType: 'BUSINESS',
       description: '',
     },
   });

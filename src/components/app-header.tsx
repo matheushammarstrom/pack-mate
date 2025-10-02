@@ -8,8 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { Plane, User, LogOut, Settings } from 'lucide-react';
-import { TripDialog } from '@/components/trip-dialog';
+import { Plane, User, LogOut } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 
 export function AppHeader() {
@@ -25,21 +24,21 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full bg-slate-900 backdrop-blur supports-[backdrop-filter]:bg-slate-900/95 px-8">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-8">
           <Link href="/" className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
               <Plane className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold">Pack Mate</span>
+            <span className="text-xl font-bold text-white">Pack Mate</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
             <Link
               href="/"
-              className={`text-sm font-medium transition-colors hover:text-primary ${
-                pathname === '/' ? 'text-foreground' : 'text-muted-foreground'
+              className={`text-sm font-medium transition-colors hover:text-teal-400 ${
+                pathname === '/' ? 'text-white' : 'text-slate-400'
               }`}
             >
               My Trips
@@ -48,7 +47,6 @@ export function AppHeader() {
         </div>
 
         <div className="flex items-center gap-3">
-          <TripDialog />
           <Popover>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="icon" onClick={handleUserClick}>
