@@ -50,6 +50,7 @@ model User {
 
   accounts Account[]
   sessions Session[]
+  trips    Trip[]
 }
 
 model VerificationToken {
@@ -58,4 +59,121 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+// Trip Management Models
+model Trip {
+  id          String   @id @default(cuid())
+  title       String
+  destination String
+  latitude    Float?   // Destination latitude
+  longitude   Float?   // Destination longitude
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int      // in days
+  tripType    TripType
+  description String?
+  
+  // Weather data (cached from API)
+  weatherData Json?
+  
+  // Processing status
+  processingStatus TripProcessingStatus @default(CREATED)
+  
+  // AI-generated packing list
+  packingList PackingList?
+  
+  // Metadata
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@index([startDate])
+}
+
+model PackingList {
+  id          String   @id @default(cuid())
+  tripId      String   @unique
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  
+  // AI generation metadata
+  aiPrompt    String   // The prompt used to generate this list
+  aiModel     String   // Which AI model was used (e.g., "gpt-4", "claude-3")
+  generatedAt DateTime @default(now())
+  
+  // List status
+  isCompleted Boolean  @default(false)
+  completedAt DateTime?
+  
+  // Items in this packing list
+  items       PackingItem[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model PackingItem {
+  id            String   @id @default(cuid())
+  packingListId String
+  packingList   PackingList @relation(fields: [packingListId], references: [id], onDelete: Cascade)
+  
+  name          String
+  category      ItemCategory
+  quantity      Int      @default(1)
+  isPacked      Boolean  @default(false)
+  isEssential   Boolean  @default(false) // AI-determined if item is essential
+  
+  // Optional user notes
+  notes         String?
+  
+  // Packing status
+  packedAt      DateTime?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([packingListId])
+  @@index([category])
+}
+
+// Enums
+enum TripType {
+  BUSINESS
+  LEISURE
+  ADVENTURE
+  BEACH
+  CITY_BREAK
+  CAMPING
+  CRUISE
+  BACKPACKING
+  FAMILY
+  ROMANTIC
+  OTHER
+}
+
+enum TripProcessingStatus {
+  CREATED
+  WEATHER_FETCHING
+  PACKING_GENERATING
+  COMPLETED
+  FAILED
+}
+
+enum ItemCategory {
+  CLOTHING
+  ELECTRONICS
+  TOILETRIES
+  DOCUMENTS
+  MEDICINE
+  FOOD_SNACKS
+  ENTERTAINMENT
+  ACCESSORIES
+  SHOES
+  OUTERWEAR
+  UNDERWEAR
+  SWIMWEAR
+  SPORTS_EQUIPMENT
+  OTHER
 }
