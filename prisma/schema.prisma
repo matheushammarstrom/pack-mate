@@ -77,6 +77,9 @@ model Trip {
   // Weather data (cached from API)
   weatherData Json?
   
+  // Processing status
+  processingStatus TripProcessingStatus @default(CREATED)
+  
   // AI-generated packing list
   packingList PackingList?
   
@@ -148,6 +151,14 @@ enum TripType {
   FAMILY
   ROMANTIC
   OTHER
+}
+
+enum TripProcessingStatus {
+  CREATED
+  WEATHER_FETCHING
+  PACKING_GENERATING
+  COMPLETED
+  FAILED
 }
 
 enum ItemCategory {

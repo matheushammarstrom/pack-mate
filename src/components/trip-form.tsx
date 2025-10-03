@@ -34,7 +34,6 @@ import {
 import { cn } from '@/lib/utils';
 import { trpc } from '@/utils/trpc';
 import { useDebounce } from '@/hooks/useDebounce';
-import { GeocodingResponse } from '@/types/geocoding';
 
 const tripFormSchema = z
   .object({
@@ -96,59 +95,65 @@ export function TripForm({ onSuccess }: TripFormProps) {
   const destinationValue = form.watch('destination');
   const debouncedDestination = useDebounce(destinationValue, 1000);
 
+  const searchLocation = trpc.location.search.useQuery(
+    { query: debouncedDestination },
+    {
+      enabled: !!debouncedDestination && debouncedDestination.length >= 2,
+      retry: false,
+      refetchOnWindowFocus: false,
+    }
+  );
+
   useEffect(() => {
-    const validateDestination = async () => {
-      if (!debouncedDestination || debouncedDestination.length < 2) {
-        setDestinationValidation({ isValid: null, isLoading: false });
-        form.clearErrors('destination');
-        return;
-      }
+    if (!debouncedDestination || debouncedDestination.length < 2) {
+      setDestinationValidation({ isValid: null, isLoading: false });
+      form.clearErrors('destination');
+      return;
+    }
 
+    if (searchLocation.isLoading) {
       setDestinationValidation({ isValid: null, isLoading: true });
+      return;
+    }
 
-      try {
-        const response = await fetch(
-          `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
-            debouncedDestination
-          )}&count=1`
-        );
+    if (searchLocation.error) {
+      setDestinationValidation({ isValid: false, isLoading: false });
+      form.setError('destination', {
+        type: 'manual',
+        message: 'Failed to validate destination',
+      });
+      return;
+    }
 
-        if (!response.ok) {
-          throw new Error('Failed to fetch geocoding data');
-        }
+    if (searchLocation.data) {
+      const isValid =
+        searchLocation.data.results && searchLocation.data.results.length > 0;
+      const coordinates =
+        isValid && searchLocation.data.results[0]
+          ? {
+              latitude: searchLocation.data.results[0].latitude,
+              longitude: searchLocation.data.results[0].longitude,
+            }
+          : undefined;
 
-        const data: GeocodingResponse = await response.json();
-        const isValid = data.results && data.results.length > 0;
-        const coordinates =
-          isValid && data.results[0]
-            ? {
-                latitude: data.results[0].latitude,
-                longitude: data.results[0].longitude,
-              }
-            : undefined;
+      setDestinationValidation({ isValid, isLoading: false, coordinates });
 
-        setDestinationValidation({ isValid, isLoading: false, coordinates });
-
-        if (!isValid) {
-          form.setError('destination', {
-            type: 'manual',
-            message: 'Destination not found',
-          });
-        } else {
-          form.clearErrors('destination');
-        }
-      } catch (error) {
-        console.error('Geocoding validation error:', error);
-        setDestinationValidation({ isValid: false, isLoading: false });
+      if (!isValid) {
         form.setError('destination', {
           type: 'manual',
-          message: 'Failed to validate destination',
+          message: 'Destination not found',
         });
+      } else {
+        form.clearErrors('destination');
       }
-    };
-
-    validateDestination();
-  }, [debouncedDestination, form]);
+    }
+  }, [
+    debouncedDestination,
+    searchLocation.data,
+    searchLocation.isLoading,
+    searchLocation.error,
+    form,
+  ]);
 
   const onSubmit = async (values: TripFormValues) => {
     setIsSubmitting(true);

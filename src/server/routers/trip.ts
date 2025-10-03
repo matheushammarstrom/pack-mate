@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
-import { TripType, ItemCategory } from '@prisma/client';
+import { TripType, ItemCategory, TripProcessingStatus } from '@prisma/client';
+import { fetchWeatherForecast } from '../api/weather';
 
 export const tripRouter = router({
   getAllTrips: protectedProcedure.query(async ({ ctx }) => {
@@ -74,4 +75,50 @@ export const tripRouter = router({
   getItemCategories: protectedProcedure.query(async () => {
     return Object.values(ItemCategory);
   }),
+
+  getTripStatus: protectedProcedure
+    .input(z.object({ tripId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const trip = await ctx.db.trip.findUnique({
+        where: {
+          id: input.tripId,
+          userId: ctx.session.user.id,
+        },
+        select: {
+          id: true,
+          processingStatus: true,
+          weatherData: true,
+          packingList: true,
+        },
+      });
+
+      if (!trip) {
+        throw new Error('Trip not found');
+      }
+
+      return trip;
+    }),
+
+  updateTripStatus: protectedProcedure
+    .input(
+      z.object({
+        tripId: z.string(),
+        status: z.enum(TripProcessingStatus),
+        weatherData: z.any().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const trip = await ctx.db.trip.update({
+        where: {
+          id: input.tripId,
+          userId: ctx.session.user.id,
+        },
+        data: {
+          processingStatus: input.status,
+          ...(input.weatherData && { weatherData: input.weatherData }),
+        },
+      });
+
+      return trip;
+    }),
 });
